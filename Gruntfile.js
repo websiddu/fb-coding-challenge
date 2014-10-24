@@ -150,7 +150,7 @@ module.exports = function (grunt) {
           expand: true,
           cwd: '<%= config.app %>/scripts',
           src: '{,*/}*.{coffee,litcoffee,coffee.md}',
-          dest: '.tmp/scripts',
+          dest: '<%= config.app %>/scripts',
           ext: '.js'
         }]
       },
@@ -305,7 +305,8 @@ module.exports = function (grunt) {
             '*.{ico,png,txt}',
             'images/{,*/}*.webp',
             '{,*/}*.html',
-            'styles/fonts/{,*/}*.*'
+            'styles/{,*/}*.*',
+            'scripts/{,*/}*.*'
           ]
         }, {
           src: 'node_modules/apache-server-configs/dist/.htaccess',
@@ -386,12 +387,12 @@ module.exports = function (grunt) {
     'concurrent:dist',
     'autoprefixer',
     'concat',
-    'cssmin',
+    //'cssmin',
     'uglify',
     'copy:dist',
-    'rev',
-    'usemin',
-    'htmlmin'
+    // 'rev',
+    'usemin'
+    // 'htmlmin'
   ]);
 
   grunt.registerTask('default', [

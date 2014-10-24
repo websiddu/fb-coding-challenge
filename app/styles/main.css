@@ -60,14 +60,25 @@ a img {
   outline: 0;
 }
 
-/* #4b6ea8 */
-
 html, body {
-  font-family: "Helvetica", Arial, sans-serif;
-  font-size: 12px;
+  font-family: 'Lucida Grande', tahoma, verdana, arial, sans-serif;
+  font-size: 10px;
   color: #686868;
 }
 
+/* Utility Classes */
+.small {
+  font-size: 8px;
+}
+
+.ellipsis {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+/* Layout styles */
 .container {
   width: 960px;
   margin: 0 auto;
@@ -79,9 +90,8 @@ header {
   background-color: #4b6ea8;
 }
 
-/* Utility Classes */
-.small {
-  font-size: 8px;
+.logo {
+  padding: 5px 10px;
 }
 
 .scheduler {
@@ -94,16 +104,23 @@ header {
 .times {
   width: 89px;
   text-align: right;
-  border-right: solid 1px #d5d5d5;
+  height: 730px;
+  float: left;
+}
+
+/* Event styles */
+.events {
+  background-color: #ececec;
+  border-left: solid 1px #d5d5d5;
+  margin-top: 6px;
+  width: 510px;
   height: 100%;
   float: left;
 }
 
 .schedule {
-  background-color: #ececec;
-  width: 510px;
+  margin: 0 10px;
   height: 100%;
-  float: left;
   position: relative;
 }
 
@@ -111,9 +128,10 @@ header {
   border: solid 1px #d5d5d5;
   background: #fff;
   position: absolute;
+  overflow: hidden;
 }
 
-.event::before {
+.event:before {
   content: '';
   position: absolute;
   border-left: solid 5px #4b6ea9;
@@ -123,21 +141,42 @@ header {
   bottom: -1px;
 }
 
+.event span {
+  padding: 2px 8px 0;
+}
+
+.event-title {
+  color: #4b6ea9;
+  display: block;
+  margin: 0;
+  font-weight: bold;
+}
+
 .hour {
   height: 60px;
   padding-right: 5px;
+  line-height: 1;
+  font-weight: bold;
 }
 
 .hour time {
   display: block;
 }
 
-time small {
-  font-size: 8px;
+.hour-half {
+  margin-top: 22.5px;
+  font-weight: normal;
 }
 
-.minor {
-  margin-top: 16.5px;
+.repo {
+  float: right;
+  color: #fff;
+  font-size: 12px;
+  padding: 5px 25px;
+  text-decoration: none;
 }
 
-
+.repo:visited {
+  color: #fff
+  text-decoration: none;
+}

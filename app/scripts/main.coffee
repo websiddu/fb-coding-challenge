@@ -1,201 +1,329 @@
+'use strict'
+
 window.FB = do ->
 
-  #events = [ {start: 30, end: 150}, {start: 540, end: 600}, {start: 560, end: 620}, {start: 610, end: 670} , {start: 570, end: 630},];
-  events = [{"start":35,"end":86},{"start":31,"end":98},{"start":60,"end":127},{"start":93,"end":146},{"start":114,"end":165},{"start":127,"end":186},{"start":162,"end":221},{"start":209,"end":278},{"start":226,"end":284},{"start":269,"end":339},{"start":320,"end":408},{"start":380,"end":441},{"start":422,"end":485},{"start":455,"end":519},{"start":483,"end":550},{"start":512,"end":566},{"start":511,"end":578},{"start":560,"end":639},{"start":580,"end":634},{"start":614,"end":665},{"start":606,"end":693}]
-  # events = [ {start: 30, end: 150}, {start: 540, end: 600}, {start: 560, end: 620}, {start: 610, end: 670} ];
+  # Constants
+  EVENT_TEMPLATE = """
+      <span class="ellipsis event-title">Sample Item</span>
+      <span class="ellipsis small">Sample Location</span>
+    """
 
-  unpaintedEvents = []
+  events = [{start: 30, end: 150}, {start: 540, end: 600}, {start: 560, end: 620}, {start: 610, end: 670}]
 
+  # Shared variables
+  container = document.querySelector '.schedule'
+  timeAixs = document.querySelector '.times'
+  startTime = new Date().setHours(9, 0, 0, 0) # 9:00AM today
+  endTime = new Date().setHours(21, 0, 0, 0) # 9:00PM today
+
+
+  # ### _init
+  #
+  # Initialize the scheduler
+  #
   _init = ->
-    _sortEvent()
-    placeSlotSegs(events)
-    _updateCols()
+    _renderAxis()
+    _renderSchedule()
 
-    _renderIt()
 
-  _renderIt = ->
-    segCols = groupSegCols(events)
-    col = 0 # iterate each column grouping
-    while col < segCols.length
-      colSegs = segCols[col]
-      containerEl = $('.schedule')
-      i = 0
-      while i < colSegs.length
-        seg = colSegs[i]
-        el = """
-            <div class="event">
-            </div>
-          """
-        seg.el = $(el)
-        seg.el.css generateSegPositionCss(seg)
-        containerEl.append seg.el
-        i++
-      col++
+  # ### _renderAxis
+  #
+  # Render the time axis on the left
+  #
+  # Returns noting
+  _renderAxis = ->
+    while startTime <= endTime
+      now = new Date(startTime)
+      formatter = _formatDate(now)
+      axis = _getAxisPointHTML formatter
+      axisPoint = document.createElement('div')
+      axisPoint.className = 'hour'
+      axisPoint.innerHTML = axis
+      timeAixs.appendChild(axisPoint)
+      # Increment by one hour
+      startTime+=3600000
 
-  _updateCols = ->
+
+  # ### _getAxisPointHTML
+  # Construct the HTML for the time axis point on the left
+  # 1. **fomatter** - The time formatter object
+  #
+  # Returns a html string with required markup
+  _getAxisPointHTML = (formatter) ->
+    now = new Date(startTime)
+    nextHalfHour = new Date(startTime + 1800000)
+    halfHourTemplate = """
+      <time class='small hour-half' datetime='#{nextHalfHour.toString()}'>
+        #{formatter.hourHalf}
+      </time>
+    """
+    # Don't show 9:30
+    halfHourTemplate = '' if startTime is endTime
+    axisPointTemplate = """
+      <time datetime="#{now.toString()}">
+        #{formatter.time} <small class="small">#{formatter.ampm}</small>
+      </time>
+      #{halfHourTemplate}
+    """
+    return axisPointTemplate
+
+  # ### _renderSchedule
+  #
+  # Renders the schedule on the container
+  #
+  # Returns noting
+  _renderSchedule = ->
+    events.sort _compareEvts
+    _emptyContainer()
+    _setEvtsCoord(events)
+    _render()
+
+  # ### _emptyContainer
+  # Removes all the child elements in the container
+  #
+  # Returns noting
+  _emptyContainer = -> container.innerHTML = ''
+
+  # ### _render
+  #
+  # Updates the CSS and appends the events on to DOM
+  #
+  # Returns noting
+  _render = ->
     i = 0
     while i < events.length
-      events[i].col = 0
+      evt = events[i]
+      el = document.createElement('div')
+      el.className = 'event'
+      el.innerHTML = EVENT_TEMPLATE
+      evt.el = el
+      el.setAttribute("style", _evtCssStyles(evt))
+      container.appendChild evt.el
       i++
 
-  _sortEvent = ->
-    return _.chain(events).sortBy( (evt) -> evt.start ).value()
+  # ### _evtCssStyles
+  # Generates string with CSS properties that should be applied to an event
+  # element.
+  #
+  # 1. **evt** - An event object
+  #
+  # Returns an object CSS properties
+  _evtCssStyles = (evt) ->
+    top = "#{evt.start}px"
+    height = "#{evt.end - evt.start}px"
+    left ="#{evt.leftCoord * 100}%"
+    right = "#{(1 - evt.rightCoord) * 100}%"
+    "top: #{top}; left: #{left}; right: #{right}; height: #{height}"
 
-  # Generates an object with CSS properties/values that should be applied to an event segment element.
-  # Contains important positioning-related properties that should be applied to any event element, customized or not.
-  generateSegPositionCss = (seg) ->
-    top: seg.start + 'px'
-    height: seg.end - seg.start + 'px'
-    left: seg.backwardCoord * 100 + "%"
-    right: (1 - seg.forwardCoord) * 100 + "%"
-
-  groupSegCols = (segs) ->
-    segCols = [[]]
-    i = 0
-    while i < segs.length
-      segCols[segs[i].col].push segs[i]
-      i++
-    segCols
-
-
-  # Given an array of segments that are all in the same column, sets the backwardCoord and forwardCoord on each.
-  # Also reorders the given array by date!
-  placeSlotSegs = (segs) ->
-    levels = buildSlotSegLevels(segs)
-    computeForwardSlotSegs levels
-    if level0 = levels[0]
-      i = 0
-      while i < level0.length
-        computeSlotSegPressures level0[i]
-        i++
-      i = 0
-      while i < level0.length
-        computeSlotSegCoords level0[i], 0, 0
-        i++
+  # ### _setEvtsCoord
+  # Given an array of events sets the leftCoord and rightCoord on each.
+  #
+  # 1. **evts** - An array of event object
+  #
+  # Returns noting
+  _setEvtsCoord = (evts) ->
+    levels = _buildEvtLevels(evts)
+    _computeAfterEvts levels
+    firstLevel = levels[0]
+    # Compute pressure and coordinates for the first level. recursion takes
+    # care of other levels
+    _computeEvtPressures evt for evt in firstLevel
+    _computeEvtCoords evt, 0, 0 for evt in firstLevel
     return
 
-  # Builds an array of segments "levels". The first level will be the leftmost tier of segments if the calendar is
-  # left-to-right, or the rightmost if the calendar is right-to-left. Assumes the segments are already ordered by date.
-  buildSlotSegLevels = (segs) ->
+  # ### _buildEvtLevels
+  # Returns an array of events `levels` based on event collisions
+  #
+  # 1. **evts** - An array of events
+  #
+  # Returns an array of events
+  _buildEvtLevels = (evts) ->
     levels = []
     i = 0
-    while i < segs.length
-      seg = segs[i]
-
-      # go through all the levels and stop on the first level where there are no collisions
+    while i < evts.length
+      evt = evts[i]
+      # Loop every level and stop on the first level where there are no
+      # collisions
       j = 0
       while j < levels.length
-        break  unless computeSlotSegCollisions(seg, levels[j]).length
+        break unless _computeEvtCollisions(evt, levels[j]).length
         j++
-      seg.level = j
-      (levels[j] or (levels[j] = [])).push seg
+      evt.level = j
+      (levels[j] or (levels[j] = [])).push evt
       i++
     levels
 
-  # For every segment, figure out the other segments that are in subsequent
-  # levels that also occupy the same vertical space. Accumulate in seg.forwardSegs
-  computeForwardSlotSegs = (levels) ->
+  # ### _computeAfterEvts
+  # For every event, figure out the other events that are in subsequent
+  # levels that also occupy the same vertical space. Update in evt.afterEvts.
+  #
+  # 1. **levels** - An array of arrays of events
+  #
+  # Returns noting
+  _computeAfterEvts = (levels) ->
     i = 0
     while i < levels.length
       level = levels[i]
       j = 0
       while j < level.length
-        seg = level[j]
-        seg.forwardSegs = []
+        evt = level[j]
+        evt.afterEvts = []
         k = i + 1
         while k < levels.length
-          computeSlotSegCollisions seg, levels[k], seg.forwardSegs
+          _computeEvtCollisions evt, levels[k], evt.afterEvts
           k++
         j++
       i++
     return
 
-  # Figure out which path forward (via seg.forwardSegs) results in the longest path until
-  # the furthest edge is reached. The number of segments in this path will be seg.forwardPressure
-  computeSlotSegPressures = (seg) ->
-    forwardSegs = seg.forwardSegs
-    forwardPressure = 0
-    i = undefined
-    forwardSeg = undefined
-    if seg.forwardPressure is `undefined` # not already computed
-      i = 0
-      while i < forwardSegs.length
-        forwardSeg = forwardSegs[i]
-
-        # figure out the child's maximum forward path
-        computeSlotSegPressures forwardSeg
-
-        # either use the existing maximum, or use the child's forward pressure
-        # plus one (for the forwardSeg itself)
-        forwardPressure = Math.max(forwardPressure, 1 + forwardSeg.forwardPressure)
-        i++
-      seg.forwardPressure = forwardPressure
-    return
-
-  # Calculate seg.forwardCoord and seg.backwardCoord for the segment, where both values range
-  # from 0 to 1. If the calendar is left-to-right, the seg.backwardCoord maps to "left" and
-  # seg.forwardCoord maps to "right" (via percentage). Vice-versa if the calendar is right-to-left.
+  # ### _computeEvtPressures
+  # Find out which path forward (using evt.afterEvts) results in the longest
+  # path until the furthest edge is reached. The number of events in this path
+  # will be updated as evt.pressure
   #
-  # The segment might be part of a "series", which means consecutive segments with the same pressure
-  # who's width is unknown until an edge has been hit. `seriesBackwardPressure` is the number of
-  # segments behind this one in the current series, and `seriesBackwardCoord` is the starting
-  # coordinate of the first segment in the series.
-  computeSlotSegCoords = (seg, seriesBackwardPressure, seriesBackwardCoord) ->
-    forwardSegs = seg.forwardSegs
-    i = undefined
-    if seg.forwardCoord is `undefined` # not already computed
-      unless forwardSegs.length
-
-        # if there are no forward segments, this segment should butt up against the edge
-        seg.forwardCoord = 1
-      else
-
-        # sort highest pressure first
-        forwardSegs.sort compareForwardSlotSegs
-
-        # this segment's forwardCoord will be calculated from the backwardCoord of the
-        # highest-pressure forward segment.
-        computeSlotSegCoords forwardSegs[0], seriesBackwardPressure + 1, seriesBackwardCoord
-        seg.forwardCoord = forwardSegs[0].backwardCoord
-
-      # calculate the backwardCoord from the forwardCoord. consider the series
-      # available width for series
-      seg.backwardCoord = seg.forwardCoord - (seg.forwardCoord - seriesBackwardCoord) / (seriesBackwardPressure + 1) # # of segments in the series
-
-      # use this segment's coordinates to computed the coordinates of the less-pressurized
-      # forward segments
+  # 1. **evt** - An event object
+  #
+  # Returns noting
+  _computeEvtPressures = (evt) ->
+    afterEvts = evt.afterEvts
+    pressure = 0
+    if evt.pressure is `undefined` # not already computed
       i = 0
-      while i < forwardSegs.length
-        computeSlotSegCoords forwardSegs[i], 0, seg.forwardCoord
+      while i < afterEvts.length
+        forwardEvt = afterEvts[i]
+
+        # Figure out the child's maximum forward path
+        _computeEvtPressures forwardEvt
+
+        # Either use the existing maximum, or use the child's forward pressure
+        # plus one
+        pressure = Math.max(pressure, 1 + forwardEvt.pressure)
+        i++
+      evt.pressure = pressure
+    return
+
+  # ### _computeEvtCoords
+  #
+  # Calculate rightCoord and leftCoord for the event, where both values range
+  # from 0 to 1.
+  #
+  # 1. **evt** - The event object
+  # 2. **seriesLeftPressure** - The number of events behind this event in the current series
+  # 3. **seriesleftCoord** - The starting coordinate of the first event in the series.
+  #
+  # Returns noting
+  _computeEvtCoords = (evt, seriesLeftPressure, seriesleftCoord) ->
+    afterEvts = evt.afterEvts
+    if evt.rightCoord is undefined
+      if !afterEvts.length
+        # If there are no after events, event should alight to extreme right
+        evt.rightCoord = 1
+      else
+        # Sort highest pressure first
+        afterEvts.sort _compareAfterEvts
+        # This event's rightCoord will be calculated from the leftCoord of the
+        # highest-pressure after event.
+        _computeEvtCoords afterEvts[0], seriesLeftPressure + 1, seriesleftCoord
+        evt.rightCoord = afterEvts[0].leftCoord
+
+      # Calculate the leftCoord from the rightCoord.
+      evt.leftCoord = evt.rightCoord - (evt.rightCoord - seriesleftCoord) / (seriesLeftPressure + 1)
+
+      # Compute the coordinates of the less-pressurized after events
+      i = 0
+      while i < afterEvts.length
+        _computeEvtCoords afterEvts[i], 0, evt.rightCoord
         i++
     return
 
-  # Find all the segments in `otherSegs` that vertically collide with `seg`.
+  # ### _computeEvtCollisions
+  # Find all the events in `otherEvts` that vertically collide with `evt`.
   # Append into an optionally-supplied `results` array and return.
-  computeSlotSegCollisions = (seg, otherSegs, results) ->
+  #
+  # 1. **evt** - The event object
+  # 2. **otherEvts** - An array of events
+  # 3. **results** - Array of events
+  #
+  # returns an array of events
+  _computeEvtCollisions = (evt, otherEvts, results) ->
     results = results or []
     i = 0
-    while i < otherSegs.length
-      results.push otherSegs[i]  if isSlotSegCollision(seg, otherSegs[i])
+    while i < otherEvts.length
+      results.push otherEvts[i]  if _isEvtCollision(evt, otherEvts[i])
       i++
     results
 
-  # Do these segments occupy the same vertical space?
-  isSlotSegCollision = (seg1, seg2) ->
-    seg1.end > seg2.start and seg1.start < seg2.end
+  # Check if the event's occupy the same vertical space or Overlap
+  #
+  # 1. **evt1** - First event object
+  # 2. **evt2** - Second event object
+  #
+  # Returns a boolean
+  _isEvtCollision = (evt1, evt2) ->
+    evt1.end > evt2.start and evt1.start < evt2.end
 
-  # A cmp function for determining which forward segment to rely on more when computing coordinates.
-  compareForwardSlotSegs = (seg1, seg2) ->
-    seg2.forwardPressure - seg1.forwardPressure or (seg1.backwardCoord or 0) - (seg2.backwardCoord or 0) or compareSegs(seg1, seg2)
+  # A comparator function determining which after event to rely on more when
+  # computing coordinates.
+  #
+  # 1. **evt1** - First event object
+  # 2. **evt2** - Second event object
+  #
+  # Returns a boolean
+  _compareAfterEvts = (evt1, evt2) ->
+    evt2.pressure - evt1.pressure or (evt1.leftCoord or 0) - (evt2.leftCoord or 0)
 
-  paintSchedule: (newEvents) ->
-    events = newEvents
+  # ### _compareEvts
+  # A comparator function to compare the event while sorting. Compare the start
+  # time first if both are the same then, compare the duration.
+  #
+  # 1. **evt1** - First event object
+  # 2. **evt2** - Second event object
+  #
+  # Returns a boolean
+  _compareEvts = (evt1, evt2) ->
+    (evt1.start - evt2.start) or ((evt2.end - evt2.start) - (evt1.end - evt1.start))
+
+  # ### _formatDate
+  # A Utility method which returns the AM or PM and other string
+  # formats for a given 24 hours format date
+  #
+  # 1. **date** - A date object
+  #
+  # Returns an object with required string formats
+  _formatDate = (date) ->
+    hours = date.getHours()
+    minutes = date.getMinutes()
+    ampm = (if hours >= 12 then "PM" else "AM")
+    hours = hours % 12
+    hours = (if hours then hours else 12) # the hour '0' should be '12'
+    # No need to check minutes in this case, keeping this for future
+    minutes = (if minutes < 10 then "0" + minutes else minutes)
+
+    ampm: ampm
+    time: "#{hours}:#{minutes}"
+    hourHalf: "#{hours}:#{parseInt(minutes) + 30}"
+
+  # ## Public Methods
+
+  # ### FB.paintSchedule
+  # Public method to render the events on to the scheduler
+  #
+  # 1. **newEvents** - An array of events to be rendered
+  #
+  # returns noting
+  paintSchedule: (evts) ->
+    events = evts
     _renderSchedule()
+    return
 
+  # FB.init
+  #
+  # A public method to initialize the application
+  #
   init: ->
     _init()
 
-$(FB.init)
+FB.init()
 
-# Exposing only requried function
+# Exposing only required function
 window.layOutDay = window.FB.paintSchedule
