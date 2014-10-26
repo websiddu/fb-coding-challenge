@@ -8,7 +8,7 @@ window.FB = do ->
       <span class="ellipsis small">Sample Location</span>
     """
 
-  events = [{start: 30, end: 150}, {start: 540, end: 600}, {start: 560, end: 620}, {start: 610, end: 670}]
+  events = []
 
   # Shared variables
   container = document.querySelector '.schedule'
@@ -23,8 +23,6 @@ window.FB = do ->
   #
   _init = ->
     _renderAxis()
-    _renderSchedule()
-
 
   # ### _renderAxis
   #
@@ -94,7 +92,7 @@ window.FB = do ->
     while i < events.length
       evt = events[i]
       el = document.createElement('div')
-      el.className = 'event'
+      el.className = 'event animated fadeIn'
       el.innerHTML = EVENT_TEMPLATE
       evt.el = el
       el.setAttribute("style", _evtCssStyles(evt))
@@ -112,8 +110,19 @@ window.FB = do ->
     top = "#{evt.start}px"
     height = "#{evt.end - evt.start}px"
     left ="#{evt.leftCoord * 100}%"
-    right = "#{(1 - evt.rightCoord) * 100}%"
-    "top: #{top}; left: #{left}; right: #{right}; height: #{height}"
+    width = "#{(evt.rightCoord - evt.leftCoord) * 100}%"
+
+    # Calculating width to make sure that the below is valid
+    # 2) If two events collide in time, they must have the same width.
+    unless evt.afterEvts.length is 0
+      width = (evt.afterEvts[0].rightCoord - evt.afterEvts[0].leftCoord) * 100 + "%"
+
+    # calculate the right position from right coordinate so that
+    # event will occupy the width till it hits the next edge.
+    # This will be cool!! Not using for now!!
+    # right = "#{(1 - evt.rightCoord) * 100}%"
+
+    "top: #{top}; left: #{left}; width: #{width}; height: #{height}"
 
   # ### _setEvtsCoord
   # Given an array of events sets the leftCoord and rightCoord on each.
@@ -327,3 +336,5 @@ FB.init()
 
 # Exposing only required function
 window.layOutDay = window.FB.paintSchedule
+
+layOutDay([{start: 30, end: 150}, {start: 540, end: 600}, {start: 560, end: 620}, {start: 610, end: 670}])

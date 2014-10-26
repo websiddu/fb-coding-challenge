@@ -3,28 +3,13 @@
   window.FB = (function() {
     var EVENT_TEMPLATE, container, endTime, events, startTime, timeAixs, _buildEvtLevels, _compareAfterEvts, _compareEvts, _computeAfterEvts, _computeEvtCollisions, _computeEvtCoords, _computeEvtPressures, _emptyContainer, _evtCssStyles, _formatDate, _getAxisPointHTML, _init, _isEvtCollision, _render, _renderAxis, _renderSchedule, _setEvtsCoord;
     EVENT_TEMPLATE = "<span class=\"ellipsis event-title\">Sample Item</span>\n<span class=\"ellipsis small\">Sample Location</span>";
-    events = [
-      {
-        start: 30,
-        end: 150
-      }, {
-        start: 540,
-        end: 600
-      }, {
-        start: 560,
-        end: 620
-      }, {
-        start: 610,
-        end: 670
-      }
-    ];
+    events = [];
     container = document.querySelector('.schedule');
     timeAixs = document.querySelector('.times');
     startTime = new Date().setHours(9, 0, 0, 0);
     endTime = new Date().setHours(21, 0, 0, 0);
     _init = function() {
-      _renderAxis();
-      return _renderSchedule();
+      return _renderAxis();
     };
     _renderAxis = function() {
       var axis, axisPoint, formatter, now, _results;
@@ -68,7 +53,7 @@
       while (i < events.length) {
         evt = events[i];
         el = document.createElement('div');
-        el.className = 'event';
+        el.className = 'event animated fadeIn';
         el.innerHTML = EVENT_TEMPLATE;
         evt.el = el;
         el.setAttribute("style", _evtCssStyles(evt));
@@ -78,12 +63,15 @@
       return _results;
     };
     _evtCssStyles = function(evt) {
-      var height, left, right, top;
+      var height, left, top, width;
       top = "" + evt.start + "px";
       height = "" + (evt.end - evt.start) + "px";
       left = "" + (evt.leftCoord * 100) + "%";
-      right = "" + ((1 - evt.rightCoord) * 100) + "%";
-      return "top: " + top + "; left: " + left + "; right: " + right + "; height: " + height;
+      width = "" + ((evt.rightCoord - evt.leftCoord) * 100) + "%";
+      if (evt.afterEvts.length !== 0) {
+        width = (evt.afterEvts[0].rightCoord - evt.afterEvts[0].leftCoord) * 100 + "%";
+      }
+      return "top: " + top + "; left: " + left + "; width: " + width + "; height: " + height;
     };
     _setEvtsCoord = function(evts) {
       var evt, firstLevel, levels, _i, _j, _len, _len1;
@@ -220,5 +208,21 @@
   FB.init();
 
   window.layOutDay = window.FB.paintSchedule;
+
+  layOutDay([
+    {
+      start: 30,
+      end: 150
+    }, {
+      start: 540,
+      end: 600
+    }, {
+      start: 560,
+      end: 620
+    }, {
+      start: 610,
+      end: 670
+    }
+  ]);
 
 }).call(this);
